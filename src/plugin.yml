@@ -1,0 +1,10 @@
+name: Silence
+main: feildmaster.silence.Silence
+version: 1.2
+author: feildmaster
+
+commands:
+  silence:
+    description: Toggle chat listening
+    aliases:
+      - quiet
