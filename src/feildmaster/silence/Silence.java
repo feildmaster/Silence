@@ -54,7 +54,7 @@ public class Silence extends JavaPlugin {
             }
 
             public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
-                if(event.getMessage().startsWith("/me") && !event.getPlayer().hasPermission("silence.bypass")) {
+                if(server_wide && event.getMessage().startsWith("/me") && !event.getPlayer().hasPermission("silence.bypass")) {
                     event.getPlayer().sendMessage(format(server_message));
                     event.setCancelled(true);
                 }

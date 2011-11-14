@@ -1,6 +1,6 @@
 name: Silence
 main: feildmaster.silence.Silence
-version: 1.3
+version: 1.3.1
 author: feildmaster
 
 commands:
