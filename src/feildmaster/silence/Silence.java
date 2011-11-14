@@ -3,35 +3,96 @@ package feildmaster.silence;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
-import org.bukkit.event.player.PlayerChatEvent;
-import org.bukkit.event.player.PlayerKickEvent;
-import org.bukkit.event.player.PlayerListener;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Silence extends JavaPlugin {
-    private List<String> silenceChat;
+    private static final List<String> silenceChat = new ArrayList<String>();
+    private boolean server_wide = false;
+    private String server_message = "All chat is currently being silenced";
+    private String player_message = "Chat is silenced, use /silence to toggle";
 
     public void onDisable() {
         getServer().getLogger().info(format("Disabled!"));
     }
 
     public void onEnable() {
-        silenceChat = new ArrayList<String>();
+        PlayerListener listener = new PlayerListener() {
+            public void onPlayerChat(PlayerChatEvent event) {
+                if(event.isCancelled()) return;
 
-        chatListener cl = new chatListener();
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_CHAT, cl, Event.Priority.Low, this);
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_QUIT, cl, Event.Priority.Low, this);
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_KICK, cl, Event.Priority.Low, this);
+                if(server_wide) {
+                    if(event.getPlayer().hasPermission("silence.bypass")) return;
+
+                    event.setCancelled(true);
+                    event.getPlayer().sendMessage(server_message);
+
+                    return;
+                }
+
+                if(silenceChat.contains(event.getPlayer().getName()) && !event.getPlayer().hasPermission("silence.bypass")) {
+                    event.setCancelled(true);
+                    event.getPlayer().sendMessage(format(player_message));
+                    return;
+                }
+
+                for(Player p : new HashSet<Player>(event.getRecipients()))
+                    if(silenceChat.contains(p.getName())) event.getRecipients().remove(p);
+            }
+
+            public void onPlayerJoin(PlayerJoinEvent event) {
+                if(server_wide) {
+                    event.getPlayer().sendMessage(format(server_message));
+                    //if(event.getPlayer().hasPermission("silence.bypass")) event.getPlayer().sendMessage("You are able to talk");
+                } else if (silenceChat.contains(event.getPlayer().getName())) {
+                    event.getPlayer().sendMessage(format(player_message));
+                    //if(event.getPlayer().hasPermission("silence.bypass")) event.getPlayer().sendMessage("You are able to talk");
+                }
+            }
+
+            public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
+                if(event.getMessage().startsWith("/me") && !event.getPlayer().hasPermission("silence.bypass")) {
+                    event.getPlayer().sendMessage(format(server_message));
+                    event.setCancelled(true);
+                }
+            }
+        };
+
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_CHAT, listener, Event.Priority.Low, this);
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, listener, Event.Priority.Low, this);
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, listener, Event.Priority.Low, this);
 
         getServer().getLogger().info(format("v"+getDescription().getVersion()+" Enabled!"));
     }
 
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if(cmd.getName().equals("silence-all")) {
+            if(!sender.hasPermission("silence.admin")) return true;
+
+            StringBuilder message = new StringBuilder();
+
+            if(args.length > 0) {
+                for(String s : args) message.append(s).append(" ");
+
+                message.deleteCharAt(message.length()-1);
+            }
+
+            if(server_wide) {
+                if(message.length() == 0) message.append("Chat no longer silenced.");
+                server_wide = false;
+                getServer().broadcastMessage(message.toString());
+            } else {
+                if(message.length() == 0) message.append("All chat is currently being silenced");
+                server_wide = true;
+                getServer().broadcastMessage(server_message = message.toString());
+            }
+
+            return true;
+        }
+
         if(!(sender instanceof Player)) return true;
 
         Player player = (Player)sender;
@@ -49,29 +110,5 @@ public class Silence extends JavaPlugin {
 
     public String format(String message) {
         return String.format("[%1$s] %2$s", getDescription().getName(), message);
-    }
-
-    class chatListener extends PlayerListener {
-        public void onPlayerChat(PlayerChatEvent event) {
-            if(event.isCancelled()) return;
-            if(silenceChat.contains(event.getPlayer().getName())) {
-                event.setCancelled(true);
-                event.getPlayer().sendMessage(format("Chat is silenced, use /silence to toggle"));
-                return;
-            }
-            for(Player p : new HashSet<Player>(event.getRecipients()))
-                if(silenceChat.contains(p.getName()))
-                    event.getRecipients().remove(p);
-        }
-
-        public void onPlayerKick(PlayerKickEvent event) {
-            if(silenceChat.contains(event.getPlayer().getName()))
-                silenceChat.remove(event.getPlayer().getName());
-        }
-
-        public void onPlayerQuit(PlayerQuitEvent event) {
-            if(silenceChat.contains(event.getPlayer().getName()))
-                silenceChat.remove(event.getPlayer().getName());
-        }
     }
 }
