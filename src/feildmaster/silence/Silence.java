@@ -33,14 +33,15 @@ public class Silence extends JavaPlugin {
                     return;
                 }
 
-                if(silenceChat.contains(event.getPlayer().getName()) && !event.getPlayer().hasPermission("silence.bypass")) {
+                if(silenceChat.contains(event.getPlayer().getName())) {
                     event.setCancelled(true);
                     event.getPlayer().sendMessage(format(player_message));
                     return;
                 }
 
                 for(Player p : new HashSet<Player>(event.getRecipients()))
-                    if(silenceChat.contains(p.getName())) event.getRecipients().remove(p);
+                    if(silenceChat.contains(p.getName()))
+                        event.getRecipients().remove(p);
             }
 
             public void onPlayerJoin(PlayerJoinEvent event) {
@@ -83,11 +84,11 @@ public class Silence extends JavaPlugin {
             if(server_wide) {
                 if(message.length() == 0) message.append("Chat no longer silenced.");
                 server_wide = false;
-                getServer().broadcastMessage(message.toString());
+                getServer().broadcastMessage(format(message.toString()));
             } else {
                 if(message.length() == 0) message.append("All chat is currently being silenced");
                 server_wide = true;
-                getServer().broadcastMessage(server_message = message.toString());
+                getServer().broadcastMessage(format(server_message = message.toString()));
             }
 
             return true;
