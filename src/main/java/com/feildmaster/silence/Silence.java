@@ -1,92 +1,98 @@
-package feildmaster.silence;
+package com.feildmaster.silence;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
+import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Silence extends JavaPlugin {
-    private static final List<String> silenceChat = new ArrayList<String>();
+    public static boolean BLOCK_SLASH_ME = true;
+    private final List<String> SILENCE_CHAT = new ArrayList<String>();
     private boolean server_wide = false;
     private String server_message = "All chat is currently being silenced";
     private String player_message = "Chat is silenced, use /silence to toggle";
 
-    public void onDisable() {
-        getServer().getLogger().info(format("Disabled!"));
-    }
-
+    @Override
     public void onEnable() {
-        PlayerListener listener = new PlayerListener() {
+        Listener listener = new Listener() {
+            @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
             public void onPlayerChat(PlayerChatEvent event) {
-                if(event.isCancelled()) return;
-
-                if(server_wide) {
-                    if(event.getPlayer().hasPermission("silence.bypass")) return;
+                if (server_wide) {
+                    if (event.getPlayer().hasPermission("silence.bypass")) {
+                        return;
+                    }
 
                     event.setCancelled(true);
                     event.getPlayer().sendMessage(server_message);
-
                     return;
                 }
 
-                if(silenceChat.contains(event.getPlayer().getName())) {
+                if (SILENCE_CHAT.contains(event.getPlayer().getName())) {
                     event.setCancelled(true);
                     event.getPlayer().sendMessage(format(player_message));
                     return;
                 }
 
-                for(Player p : new HashSet<Player>(event.getRecipients()))
-                    if(silenceChat.contains(p.getName()))
+                for (Player p : new HashSet<Player>(event.getRecipients())) {
+                    if (SILENCE_CHAT.contains(p.getName())) {
                         event.getRecipients().remove(p);
+                    }
+                }
             }
 
+            @EventHandler(priority = EventPriority.LOW)
             public void onPlayerJoin(PlayerJoinEvent event) {
-                if(server_wide) {
+                if (server_wide) {
                     event.getPlayer().sendMessage(format(server_message));
                     //if(event.getPlayer().hasPermission("silence.bypass")) event.getPlayer().sendMessage("You are able to talk");
-                } else if (silenceChat.contains(event.getPlayer().getName())) {
+                } else if (SILENCE_CHAT.contains(event.getPlayer().getName())) {
                     event.getPlayer().sendMessage(format(player_message));
                     //if(event.getPlayer().hasPermission("silence.bypass")) event.getPlayer().sendMessage("You are able to talk");
                 }
             }
 
+            @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
             public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
-                if(server_wide && event.getMessage().startsWith("/me") && !event.getPlayer().hasPermission("silence.bypass")) {
+                if (server_wide && event.getMessage().startsWith("/me") && !event.getPlayer().hasPermission("silence.bypass")) {
                     event.getPlayer().sendMessage(format(server_message));
                     event.setCancelled(true);
                 }
             }
         };
 
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_CHAT, listener, Event.Priority.Low, this);
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, listener, Event.Priority.Low, this);
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, listener, Event.Priority.Low, this);
 
-        getServer().getLogger().info(format("v"+getDescription().getVersion()+" Enabled!"));
+        getServer().getPluginManager().registerEvents(listener, this);
     }
 
+    @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if(cmd.getName().equals("silence-all")) {
-            if(!sender.hasPermission("silence.admin")) return true;
+        if (cmd.getName().equals("silence-all")) {
+            if (!sender.hasPermission("silence.admin")) {
+                return true;
+            }
 
             StringBuilder message = new StringBuilder();
 
-            if(args.length > 0) {
-                for(String s : args) message.append(s).append(" ");
+            if (args.length > 0) {
+                for (String s : args) {
+                    message.append(s).append(" ");
+                }
 
-                message.deleteCharAt(message.length()-1);
+                message.deleteCharAt(message.length() - 1);
             }
 
-            if(server_wide) {
-                if(message.length() == 0) message.append("Chat no longer silenced.");
+            if (server_wide) {
+                if (message.length() == 0) {
+                    message.append("Chat no longer silenced.");
+                }
                 server_wide = false;
                 getServer().broadcastMessage(format(message.toString()));
             } else {
-                if(message.length() == 0) message.append("All chat is currently being silenced");
+                if (message.length() == 0) {
+                    message.append("All chat is currently being silenced");
+                }
                 server_wide = true;
                 getServer().broadcastMessage(format(server_message = message.toString()));
             }
@@ -94,15 +100,17 @@ public class Silence extends JavaPlugin {
             return true;
         }
 
-        if(!(sender instanceof Player)) return true;
+        if (!(sender instanceof Player)) {
+            return true;
+        }
 
-        Player player = (Player)sender;
+        Player player = (Player) sender;
 
-        if(silenceChat.contains(player.getName())) {
-            silenceChat.remove(player.getName());
+        if (SILENCE_CHAT.contains(player.getName())) {
+            SILENCE_CHAT.remove(player.getName());
             player.sendMessage(format("Now listening to chat"));
         } else {
-            silenceChat.add(player.getName());
+            SILENCE_CHAT.add(player.getName());
             player.sendMessage(format("Chat will be silenced"));
         }
 

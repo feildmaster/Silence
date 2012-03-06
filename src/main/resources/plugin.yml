@@ -1,0 +1,20 @@
+name: Silence
+main: com.feildmaster.silence.Silence
+version: ${version}
+author: feildmaster
+
+commands:
+  silence:
+    description: Toggle chat listening
+    aliases:
+      - quiet
+  silence-all:
+    description: Silence the server
+    aliases:
+      - quiet-all
+
+permissions:
+  silence.bypass:
+    description: Bypasses silence-all (Your chat will go through)
+  silence.admin:
+    description: Allows using silence-all
